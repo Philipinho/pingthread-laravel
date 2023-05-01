@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\TwitterController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,4 +18,4 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/')
+Route::get('/api/thread/add', [TwitterController::class, 'addThread'])->name('thread.add');
