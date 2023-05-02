@@ -2,6 +2,9 @@
 
 namespace App\Service;
 
+use App\Models\Author;
+use App\Models\Thread;
+use Carbon\Carbon;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Log;
@@ -226,12 +229,12 @@ class ThreadService
                 }
             }
 
+            $cleaned_tweet_text = preg_replace("/\n{3,}/", "\n", $tweet_text);
+            $cleaned_tweet_text = str_replace("\n", "\n<br>", $cleaned_tweet_text);
+
             $merge_content = (
-                "<div class='thread-part' data-tweet-id='{$tweet_id}'>\n" .
-                "<p class='tweet-text'>\n" .
-                str_replace("\n", "\n",
-                    $this->stripShortLinks(str_replace("\n\n\n", "\n<br>", $tweet_text))) .
-                "\n</p>"
+                "<div class='thread-part'>\n" .
+                "<p class='tweet-text'>\n" . $cleaned_tweet_text . "\n</p>"
             );
 
             foreach ($url_entities as $url) {
@@ -311,26 +314,44 @@ class ThreadService
         $thread_info = $thread_tweets[0]['tweet_results']['result'];
         $user_info = $thread_info['core']['user_results']['result']['legacy'];
 
-        $user_info_array = [
-            'author_id' => $thread_info['legacy']['user_id_str'],
-            'author_username' => $user_info['screen_name'],
-            'author_name' => $user_info['name'],
-            'author_bio' => $user_info['description'],
-            'author_photo' => str_replace('_normal', '', $user_info['profile_image_url_https']),
+        $author_data = [
+            'twitter_id' => $thread_info['legacy']['user_id_str'],
+            'username' => $user_info['screen_name'],
+            'name' => $user_info['name'],
+            'bio' => $user_info['description'],
+            'profile_picture' => str_replace('_normal', '', $user_info['profile_image_url_https']),
             'verified' => $user_info['verified']
         ];
 
-        $thread_info_array = [
+        $thread_data = [
             'thread_id' => $thread_info['legacy']['id_str'],
-            'thread_html' => implode("\n", $merged_contents),
-            'thread_snippet' => substr($this->stripLinks($thread_info['legacy']['full_text']), 0, 280),
-            'thread_count' => count($thread_tweets),
-            'thread_hashtags' => implode(', ', $hashtags),
-            'thread_lang' => $thread_info['legacy']['lang'],
-            'thread_date' => $thread_info['legacy']['created_at']
+            'snippet' => substr($this->stripLinks($thread_info['legacy']['full_text']), 0, 280),
+            'content' => implode("\n", $merged_contents),
+            'count' => count($thread_tweets),
+            'hashtags' => implode(', ', $hashtags),
+            'language' => $thread_info['legacy']['lang'],
+            'creation_date' => Carbon::parse($thread_info['legacy']['created_at'])
         ];
 
-        return array_merge($user_info_array, $thread_info_array);
+        $author = Author::firstOrNew(['twitter_id' => $author_data['twitter_id']], $author_data);
+        $author->fill($author_data); // Update the author details
+        $author->save();
+
+        $thread = Thread::firstWhere('thread_id', $thread_data['thread_id']);
+
+        if ($thread === null) {
+            $thread = new Thread($thread_data);
+            $thread->author()->associate($author);
+            $thread->author_twitter_id = $author->twitter_id;
+            $thread->save();
+        }
+
+        // $response = array_merge($author_data, $thread_data);
+
+        $threadArray = $thread->toArray();
+        $threadArray['author'] = $author->toArray();
+
+        return $threadArray;
     }
 
 }
