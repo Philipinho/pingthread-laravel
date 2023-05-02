@@ -3,15 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Service\ThreadService;
-use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class TwitterController extends Controller
 {
 
-
-    public function addThread(Request $request)
+    public function addThread(Request $request): \Illuminate\Http\JsonResponse|array
     {
         $input = $request->input('url') ?: $request->input('id');
         $tweet_id = "";
@@ -19,7 +16,7 @@ class TwitterController extends Controller
         if (is_numeric($input)) {
             $tweet_id = $input;
         } else {
-            $tweet_id = $this->getTweetID($input);
+            $tweet_id = ThreadService::getTweetID($input);
         }
 
         if (!is_numeric($tweet_id)) {
@@ -38,10 +35,4 @@ class TwitterController extends Controller
         }
     }
 
-    function getTweetID($url)
-    {
-        $twitter_post_regex = '/^https?:\/\/((mobile\.)|(web\.))?twitter\.com\/(\w+)\/status\/(\d+)/i';
-        preg_match($twitter_post_regex, $url, $matches);
-        return $matches[5];
-    }
 }

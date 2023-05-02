@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Log;
 class ThreadService
 {
 
+    use UtilityService;
+
     function getAuthHeaders(): array
     {
         $url = "https://api.twitter.com/1.1/guest/activate.json";
@@ -39,7 +41,7 @@ class ThreadService
     function getThreadById($tweet_id, $cursor = null)
     {
         $headers = $this->getAuthHeaders();
-        if (empty($headers)){
+        if (empty($headers)) {
             throw new \Exception("Twitter authorization failed.", 401);
         }
 
@@ -167,76 +169,29 @@ class ThreadService
         return $thread_tweets;
     }
 
-    function stripShortLinks($text_input): string
-    {
-        $match_links = "/(https?):(\\/\\/t\\.co\\/([A-Za-z0-9]|[A-Za-z]){10})/";
-        return preg_replace($match_links, "", $text_input);
-    }
-
-    function stripLinks($text_input): string
-    {
-        $match_links = "/(https?|ftp|file):\\/\\/[\\-a-zA-Z0-9+&@#\\/%?=~_|!:,.;]*[\\-a-zA-Z0-9+&@#\\/%=~_|]/";
-        return preg_replace($match_links, "", $text_input);
-    }
-
-    function cleanTweet($text): string
-    {
-        return $this->stripShortLinks($text);
-    }
-
-    function formatTweetEmbed($tweet_link): string
-    {
-        return "<div class='quote'>{$tweet_link}</div>";
-    }
-
-    function transformGifLinks($text): string
-    {
-        $url_validation_regex = "/(.\\/)*.+\\.([Mm][Pp]4|[3Gg][Pp]|[Gg][Ii][Ff])/";
-        preg_match_all($url_validation_regex, $text, $matches);
-        $sb = [];
-
-        foreach ($matches[0] as $found) {
-            $sb[] = "<video class='gif' src='{$found}' controls></video>";
-        }
-
-        return implode('', $sb);
-    }
-
-    function transformVideoLinks($text): string
-    {
-        $url_validation_regex = "/(.\\/)*.+\\.([Mm][Pp]4|[3Gg][Pp]|[Gg][Ii][Ff])/";
-        preg_match_all($url_validation_regex, $text, $matches);
-        $sb = [];
-        foreach ($matches[0] as $found) {
-            $sb[] = "<video class='vid' src='{$found}' controls></video>";
-        }
-        return implode('', $sb);
-    }
-
-    function transformImageLinks($text): string
-    {
-        $url_validation_regex = "/(.\\/)*.+\\.([Pp][Nn][Gg]|[Jj][Pp][Ee]?[Gg])/";
-        preg_match_all($url_validation_regex, $text, $matches);
-        $sb = [];
-        foreach ($matches[0] as $found) {
-            $sb[] = "<img src='{$found}'/>";
-        }
-        return implode('', $sb);
-    }
-
-    function getMaxVideoVariant($bitrate_list, $bitrate)
-    {
-        $bitrate_list[] = $bitrate;
-        return max($bitrate_list);
-    }
-
     /**
      * @throws \Exception|GuzzleException
      */
-    function formatThread($thread_id)
+    function formatThread($thread_id): array
     {
-        $tweet_data = $this->getThreadById($thread_id);
-        $thread_tweets = $this->compileThread($tweet_data);
+
+        while (true) {
+            $tweet_data = $this->getThreadById($thread_id);
+            try {
+                $thread_tweets = $this->compileThread($tweet_data);
+                break;
+            } catch (\Exception $e) {
+                if (str_contains($e->getMessage(), "not the first tweet")) {
+                    $entries = $tweet_data['data']['threaded_conversation_with_injections_v2']['instructions'][0]['entries'];
+                    $parent_thread_id = $entries[1]['content']['itemContent']['tweet_results']['result']['legacy']['self_thread']['id_str'];
+
+                    $thread_id = $parent_thread_id;
+                } else {
+                    Log::info($e->getMessage());
+                    throw new \Exception($e->getMessage(), $e->getCode());
+                }
+            }
+        }
 
         $merged_contents = [];
         $hashtags = [];
@@ -368,16 +323,14 @@ class ThreadService
         $thread_info_array = [
             'thread_id' => $thread_info['legacy']['id_str'],
             'thread_html' => implode("\n", $merged_contents),
-            'thread_snippet' => substr($this->stripLinks($thread_info['legacy']['full_text']), 0,280),
+            'thread_snippet' => substr($this->stripLinks($thread_info['legacy']['full_text']), 0, 280),
             'thread_count' => count($thread_tweets),
             'thread_hashtags' => implode(', ', $hashtags),
             'thread_lang' => $thread_info['legacy']['lang'],
-            'thread_date' => strtotime($thread_info['legacy']['created_at'])
+            'thread_date' => $thread_info['legacy']['created_at']
         ];
 
-        $merged_info = array_merge($user_info_array, $thread_info_array);
-
-        return $merged_info;
+        return array_merge($user_info_array, $thread_info_array);
     }
 
 }
