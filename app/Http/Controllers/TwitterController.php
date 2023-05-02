@@ -2,17 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Thread;
 use App\Service\ThreadService;
+use GuzzleHttp\Exception\GuzzleException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class TwitterController extends Controller
 {
 
-    public function addThread(Request $request): \Illuminate\Http\JsonResponse|array
+    public function addThread(Request $request): JsonResponse|array
     {
         $input = $request->input('url') ?: $request->input('id');
-        $tweet_id = "";
 
+        $refresh = $request->input('refresh');
+
+        $tweet_id = "";
         if (is_numeric($input)) {
             $tweet_id = $input;
         } else {
@@ -23,15 +28,18 @@ class TwitterController extends Controller
             return response()->json(['error' => 'Invalid tweet ID or URL'], 400);
         }
 
-        $thread = new ThreadService();
-        // if available on db fetch it.
-        // if not query the api
-        // save response to db
+        $thread = Thread::with('author')->where('thread_id', $tweet_id)->first();
 
-        try {
-            return $thread->formatThread($tweet_id);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+        if ($thread && !$refresh) {
+            return $thread->toArray();
+        } else {
+            $thread = new ThreadService();
+
+            try {
+                return $thread->formatThread($tweet_id, $refresh);
+            } catch (\Exception|GuzzleException $e) {
+                return response()->json(['error' => $e->getMessage()], 400);
+            }
         }
     }
 

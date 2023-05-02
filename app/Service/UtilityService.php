@@ -2,6 +2,8 @@
 
 namespace App\Service;
 
+use Illuminate\Support\Facades\Log;
+
 trait UtilityService
 {
 
@@ -71,9 +73,19 @@ trait UtilityService
 
     public static function getTweetID($url)
     {
-        $twitter_post_regex = '/^https?:\/\/((mobile\.)|(web\.))?twitter\.com\/(\w+)\/status\/(\d+)/i';
-        preg_match($twitter_post_regex, $url, $matches);
-        return $matches[5];
+        try {
+            $twitter_post_regex = '/^https?:\/\/((mobile\.)|(web\.))?twitter\.com\/(\w+)\/status\/(\d+)/i';
+            preg_match($twitter_post_regex, $url, $matches);
+
+            if (!isset($matches[5])) {
+                return null;
+            }
+
+            return $matches[5];
+        } catch (\Exception $e) {
+            Log::error($e->getMessage());
+            return null;
+        }
     }
 
 }

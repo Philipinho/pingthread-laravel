@@ -109,6 +109,7 @@ class ThreadService
     function compileThread($tweet_data): array
     {
         if (!isset($tweet_data['data']['threaded_conversation_with_injections_v2']['instructions'][0]['entries'])) {
+            //Log::info($tweet_data);
             throw new \Exception("Unable to read thread.", 1000);
         }
 
@@ -175,7 +176,7 @@ class ThreadService
     /**
      * @throws \Exception|GuzzleException
      */
-    function formatThread($thread_id): array
+    function formatThread($thread_id, $refresh = false): array
     {
 
         while (true) {
@@ -306,7 +307,7 @@ class ThreadService
             }
 
             $merge_content .= "\n</div>\n";
-            $merged_contents[] = $merge_content;
+            $merged_contents[] = $this->stripShortLinks($merge_content);
         }
 
         $hashtags = array_unique(array_merge(...$hashtags));
@@ -334,7 +335,7 @@ class ThreadService
         ];
 
         $author = Author::firstOrNew(['twitter_id' => $author_data['twitter_id']], $author_data);
-        $author->fill($author_data); // Update the author details
+        $author->fill($author_data);
         $author->save();
 
         $thread = Thread::firstWhere('thread_id', $thread_data['thread_id']);
@@ -344,10 +345,16 @@ class ThreadService
             $thread->author()->associate($author);
             $thread->author_twitter_id = $author->twitter_id;
             $thread->save();
+        } else if ($refresh) {
+            if ($thread_data['count'] > $thread->thread_count) {
+                $thread->content = $thread_data['content'];
+                $thread->count = $thread_data['count'];
+                $thread->hashtags = $thread_data['hashtags'];
+                $thread->save();
+            }
         }
 
         // $response = array_merge($author_data, $thread_data);
-
         $threadArray = $thread->toArray();
         $threadArray['author'] = $author->toArray();
 
