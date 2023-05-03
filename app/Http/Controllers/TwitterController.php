@@ -31,12 +31,16 @@ class TwitterController extends Controller
         $thread = Thread::with('author')->where('thread_id', $tweet_id)->first();
 
         if ($thread && !$refresh) {
-            return $thread->toArray();
+            // $thread->toArray();
+            return response()->json(['thread_id' => $thread['thread_id'], 'status' => 'success']);
+
         } else {
             $thread = new ThreadService();
 
             try {
-                return $thread->formatThread($tweet_id, $refresh);
+                $thread = $thread->formatThread($tweet_id, $refresh);
+
+                return response()->json(['thread_id' => $thread['thread_id'], 'status' => 'success']);
             } catch (\Exception|GuzzleException $e) {
                 return response()->json(['error' => $e->getMessage()], 400);
             }
