@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('hashtags', 1000)->nullable();
             $table->string('language', 100)->nullable();
             $table->unsignedBigInteger('views')->default(0)->nullable();
-            $table->timestamp('creation_date')->nullable();
+            $table->timestamp('thread_created_at')->nullable();
             $table->tinyInteger('status')->default(1);
             $table->timestamps();
         });

@@ -331,7 +331,7 @@ class ThreadService
             'count' => count($thread_tweets),
             'hashtags' => implode(', ', $hashtags),
             'language' => $thread_info['legacy']['lang'],
-            'creation_date' => Carbon::parse($thread_info['legacy']['created_at'])
+            'thread_created_at' => Carbon::parse($thread_info['legacy']['created_at'])
         ];
 
         $author = Author::firstOrNew(['twitter_id' => $author_data['twitter_id']], $author_data);

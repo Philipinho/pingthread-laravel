@@ -32,7 +32,7 @@ class TwitterController extends Controller
 
         if ($thread && !$refresh) {
             // $thread->toArray();
-            return response()->json(['thread_id' => $thread['thread_id'], 'status' => 'success']);
+            return response()->json(['thread_id' => $thread['thread_id'], 'success' => true]);
 
         } else {
             $thread = new ThreadService();
@@ -40,7 +40,7 @@ class TwitterController extends Controller
             try {
                 $thread = $thread->formatThread($tweet_id, $refresh);
 
-                return response()->json(['thread_id' => $thread['thread_id'], 'status' => 'success']);
+                return response()->json(['thread_id' => $thread['thread_id'], 'success' => true]);
             } catch (\Exception|GuzzleException $e) {
                 return response()->json(['error' => $e->getMessage()], 400);
             }
