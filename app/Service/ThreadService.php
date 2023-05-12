@@ -326,7 +326,7 @@ class ThreadService
 
         $thread_data = [
             'thread_id' => $thread_info['legacy']['id_str'],
-            'snippet' => substr($this->stripLinks($thread_info['legacy']['full_text']), 0, 280),
+            'snippet' => $this->stripLinks(mb_substr($thread_info['legacy']['full_text'], 0, 280, 'UTF-8')),
             'content' => implode("\n", $merged_contents),
             'count' => count($thread_tweets),
             'hashtags' => implode(', ', $hashtags),

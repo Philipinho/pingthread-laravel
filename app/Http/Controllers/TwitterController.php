@@ -7,6 +7,7 @@ use App\Service\ThreadService;
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class TwitterController extends Controller
 {
@@ -42,7 +43,8 @@ class TwitterController extends Controller
 
                 return response()->json(['thread_id' => $thread['thread_id'], 'success' => true]);
             } catch (\Exception|GuzzleException $e) {
-                return response()->json(['error' => $e->getMessage()], 400);
+                Log::error("Thread ID: {$tweet_id}::{$e->getMessage()}");
+                return response()->json(['error' => substr($e->getMessage(), 0, 300)], 400);
             }
         }
     }
