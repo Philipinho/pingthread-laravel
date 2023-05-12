@@ -212,8 +212,15 @@ class ThreadService
             $url_entities = $entities['urls'] ?? [];
             $hashtag_entities = $entities['hashtags'] ?? [];
 
+            if (isset($tweet_result['note_tweet']['note_tweet_results']['result']['text'])){
+                $note_tweets = $tweet_result['note_tweet']['note_tweet_results']['result']['text'];
+            }
+
             if (empty($url_entities)) {
                 $tweet_text = $this->stripLinks($tweet_text);
+                if (isset($note_tweets)){
+                    $tweet_text = $this->stripLinks($note_tweets);
+                }
             } else {
                 $links_in_tweet = [];
 
